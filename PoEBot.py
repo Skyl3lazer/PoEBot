@@ -13,7 +13,7 @@ server = "SERVERADDRESS"
 channel = "#CHANNEL"
 botnick = "BOTNAME"
 port = 6667
-#password = "oauth:asdasd234asd234ad234asds23" #Default is just an example password for twitch oauth format. Uncomment line 40 if you want this to work
+#password = "oauth:asdasd234asd234ad234asds23" #Default is just an example password for twitch oauth format. Uncomment line 48 if you want this to work
 MYTZ=pytz.timezone('US/Eastern') #CHANGE IF NOT EASTERN
 administrators=[b'User1', b'User2'] #List any channel admins here. They will have access to all commands! NOTE THE b IS NECESSARY BEFORE EACH USER
 #END SETTINGS
@@ -45,7 +45,7 @@ lg = 'none'
 irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #defines the socket
 print("connecting to:"+ server)
 irc.connect((server, port))   
-irc.send(bytes("PASS "+password+"\n", 'UTF-8')) #Authentication, beta   
+#irc.send(bytes("PASS "+password+"\n", 'UTF-8')) #Authentication, beta   
 irc.send(bytes("NICK "+ botnick +"\n", 'UTF-8'))                                                      #connects to the server
 irc.send(bytes("USER "+ botnick +" "+ botnick +" "+ botnick +" :Skyl3lazer's PoE bot\n", 'UTF-8')) #user authentication
 irc.send(bytes("JOIN "+ channel +"\n", 'UTF-8'))        #tries to join channel, probably doesnt
