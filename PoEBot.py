@@ -15,9 +15,12 @@ botnick = "BOTNAME"
 port = 6667
 #password = "oauth:asdasd234asd234ad234asds23" #Default is just an example password for twitch oauth format. Uncomment line 40 if you want this to work
 MYTZ=pytz.timezone('US/Eastern') #CHANGE IF NOT EASTERN
+administrators=[b'User1', b'User2'] #List any channel admins here. They will have access to all commands! NOTE THE b IS NECESSARY BEFORE EACH USER
+#END SETTINGS
+
 ZULU=pytz.timezone('Zulu')  #DONTCHANGE
 
-#INITIALIZATION
+#Initilization
 NET = 0
 r = requests.get('http://api.pathofexile.com/leagues?type=event')
 events=r.json()
@@ -32,17 +35,21 @@ eventTimeMin=int(nextEventTime[14:-4])
 timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)
 until = timeConverted - now
 NET = int(until.total_seconds())
+place = None
+ch = 'none'
+lg = 'none'
+#Done Initializing
+
 
 #Connect to IRC
 irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #defines the socket
 print("connecting to:"+ server)
-irc.connect((server, port))      
-#irc.send(bytes("PASS "+password+"\n", 'UTF-8')) #Authentication, beta
-irc.send(bytes("NICK "+ botnick +"\n", 'UTF-8')) #Set the nickname
-irc.send(bytes("USER "+ botnick +" "+ botnick +" "+ botnick +" :PoEBot, a simple Path of Exile IRC Bot\n", 'UTF-8')) #User authentication
+irc.connect((server, port))   
+irc.send(bytes("PASS "+password+"\n", 'UTF-8')) #Authentication, beta   
+irc.send(bytes("NICK "+ botnick +"\n", 'UTF-8'))                                                      #connects to the server
+irc.send(bytes("USER "+ botnick +" "+ botnick +" "+ botnick +" :Skyl3lazer's PoE bot\n", 'UTF-8')) #user authentication
 irc.send(bytes("JOIN "+ channel +"\n", 'UTF-8'))        #tries to join channel, probably doesnt
-time.sleep(15)
-irc.send(bytes("JOIN "+ channel +"\n", 'UTF-8'))        #join the channel for sure this time
+
 
 #Race Alerts
 def hourAlert():
@@ -102,7 +109,7 @@ def startAlert():
     return [NET-3600,'h']
    elif until.total_seconds() > 300:
     irc.send(bytes('PRIVMSG '+channel+' :'+"EVENT ALERT - STARTING IN 5 MINUTES - "+NextEvent['id'] +' - '+NextEvent['url']+'\r\n', 'UTF-8')) #gives event info
-	#TODO - Info about the race coming up in under an hour?
+	#TODO - Info about the race coming up in under an hour
     print("Starting Timer to event - " + str(NET-300))
     return [NET-300,'e']
    else:
@@ -119,8 +126,8 @@ def startAlert():
     timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)
     until = timeConverted - now
     NET = int(until.total_seconds())
-    print("Starting Timer to next event - " +str(NET-300))
-    return [NET-300,'e']
+    print("Starting Timer to next event - " +str(NET))
+    return [NET,'e']
 	
 def alertLoop(n, t):
   while 1:
@@ -162,15 +169,62 @@ else:
   
 
 
-#IRC Loop
-while 1: 
-   text=irc.recv(2040)  #Recieve text
-   print(text) 
+
+while 1:    #puts it in a loop
+   text=irc.recv(2040)  #receive the text
+   print(text)   #print text to console
+   if text.find(b'Tweet us your ideas!') != -1:                   #check to join channel
+      print("I SEE IT")
+      irc.send(bytes("JOIN "+ channel +"\n", 'UTF-8'))        #join the chan
    if text.find(b'PING') != -1:                          #check if 'PING' is found
       print("Return Ping Sent")
       print(bytes('PONG ' + text.split() [1].decode('utf-8') + '\r\n', 'UTF-8'))
       irc.send(bytes('PONG ' + text.split() [1].decode('utf-8') + '\r\n', 'UTF-8')) #returns 'PONG' back to the server (prevents pinging out!)
-   if text.find(b':!next') != -1:                          #check if '!next' is found
+   for adm in administrators:
+    if text.find(adm) != -1:
+     if text.find(b':!track') != -1: #!track - Set the character and League to track
+       print("Adm Command Found - Track")
+       place = 0
+       if len(text.split(maxsplit=5))>4:
+        ch=text.split(maxsplit=5)[4]
+        ch=str(ch)[2:-1]
+        irc.send(bytes('PRIVMSG '+channel+' :'+'Now tracking account '+str(ch)+'\r\n', 'UTF-8')) #gives event info
+       else:
+        irc.send(bytes('PRIVMSG '+channel+' :'+'Use: !track <accountName>'+'\r\n', 'UTF-8'))
+   if text.find(b':!place') != -1 or text.find(b':!rank' ) != -1: #!Place\!Rank Command - Check current rank of tracked account
+     print("Command found - Place\Rank")
+     if place is None:
+      irc.send(bytes('PRIVMSG '+channel+' :'+'No Character being Tracked at the time'+'\r\n', 'UTF-8')) #gives event info
+     else:
+      r = requests.get('http://api.pathofexile.com/leagues?type=event')
+      events=r.json()
+      now = datetime.datetime.now(MYTZ)
+      nextEventTime = events[0]['startAt']
+      eventTimeY=int(nextEventTime[:4])
+      eventTimeM=int(nextEventTime[5:-13])
+      eventTimeD=int(nextEventTime[8:-10])
+      eventTimeH=int(nextEventTime[11:-7])
+      eventTimeMin=int(nextEventTime[14:-4])
+      timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)
+      until = timeConverted - now
+      NET = until.seconds
+      until=str(until)
+      until = until[:-7]
+      lg=events[0]['id']
+      if timeConverted < now: #Event Running
+       address="http://api.pathofexile.com/ladders/"+lg
+       r = requests.get(address)
+       ladder=r.json()
+       for person in ladder['entries']:
+          if person['character']['name']==ch:
+           place = person['rank']
+       if place == 0:
+        irc.send(bytes('PRIVMSG '+channel+' :'+'Account '+str(ch)+' in league '+str(lg)+' is not on the ladder'+'\r\n', 'UTF-8')) 
+       else:
+        irc.send(bytes('PRIVMSG '+channel+' :'+'Account '+str(ch)+' in league '+str(lg)+' is Rank '+str(place)+'\r\n', 'UTF-8'))
+      else:
+        irc.send(bytes('PRIVMSG '+channel+' :'+'No Event in Progress'+'\r\n', 'UTF-8'))
+   if text.find(b':!next') != -1:                          #!next
       print("Command found - Next Event")
       r = requests.get('http://api.pathofexile.com/leagues?type=event')
       events=r.json()
@@ -213,7 +267,6 @@ while 1:
         irc.send(bytes('PRIVMSG '+channel+' :'+events[1]['id'] +' - Occurs at '+events[1]['startAt']+', in \u0002'+until+'\u000F - '+events[1]['url']+'\r\n', 'UTF-8')) #gives event info
       else:
         irc.send(bytes('PRIVMSG '+channel+' :'+events[0]['id'] +' - Occurs at '+events[0]['startAt']+', in \u0002'+until+'\u000F - '+events[0]['url']+'\r\n', 'UTF-8')) #gives event info
-   if text.find(b':!help') != -1:   #Check for '!help' command
+   if text.find(b':!help') != -1:
      print("Command found - Help")
      irc.send(bytes('PRIVMSG '+channel+' :'+"!next - Displays next upcoming event, and any currently running event"+'\r\n', 'UTF-8'))
-   #Add any other commands you wish!
