@@ -171,6 +171,7 @@ else:
 
 
 while 1:    #puts it in a loop
+   command = 0
    text=irc.recv(2040)  #receive the text
    print(text)   #print text to console
    if text.find(b'Tweet us your ideas!') != -1:                   #check to join channel
@@ -181,8 +182,9 @@ while 1:    #puts it in a loop
       print(bytes('PONG ' + text.split() [1].decode('utf-8') + '\r\n', 'UTF-8'))
       irc.send(bytes('PONG ' + text.split() [1].decode('utf-8') + '\r\n', 'UTF-8')) #returns 'PONG' back to the server (prevents pinging out!)
    for adm in administrators:
-    if text.find(adm) != -1:
-     if text.find(b':!track') != -1: #!track - Set the character and League to track
+    if command == 0
+     if text.find(adm) != -1:
+      if text.find(b':!track') != -1: #!track - Set the character and League to track
        print("Adm Command Found - Track")
        place = 0
        if len(text.split(maxsplit=5))>4:
@@ -191,6 +193,7 @@ while 1:    #puts it in a loop
         irc.send(bytes('PRIVMSG '+channel+' :'+'Now tracking account '+str(ch)+'\r\n', 'UTF-8')) #gives event info
        else:
         irc.send(bytes('PRIVMSG '+channel+' :'+'Use: !track <accountName>'+'\r\n', 'UTF-8'))
+     command = 1
    if text.find(b':!place') != -1 or text.find(b':!rank' ) != -1: #!Place\!Rank Command - Check current rank of tracked account
      print("Command found - Place\Rank")
      if place is None:
