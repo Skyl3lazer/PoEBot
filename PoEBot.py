@@ -182,7 +182,7 @@ while 1:    #puts it in a loop
       print(bytes('PONG ' + text.split() [1].decode('utf-8') + '\r\n', 'UTF-8'))
       irc.send(bytes('PONG ' + text.split() [1].decode('utf-8') + '\r\n', 'UTF-8')) #returns 'PONG' back to the server (prevents pinging out!)
    for adm in administrators:
-    if command == 0
+    if command == 0:
      if text.find(adm) != -1:
       if text.find(b':!track') != -1: #!track - Set the character and League to track
        print("Adm Command Found - Track")
