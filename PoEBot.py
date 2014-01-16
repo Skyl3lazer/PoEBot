@@ -37,8 +37,8 @@ NET = int(until.total_seconds())
 irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #defines the socket
 print("connecting to:"+ server)
 irc.connect((server, port))      
-#irc.send(bytes("PASS "+password+"\n", 'UTF-8'))
-irc.send(bytes("NICK "+ botnick +"\n", 'UTF-8'))          
+#irc.send(bytes("PASS "+password+"\n", 'UTF-8')) #Authentication, beta
+irc.send(bytes("NICK "+ botnick +"\n", 'UTF-8')) #Set the nickname
 irc.send(bytes("USER "+ botnick +" "+ botnick +" "+ botnick +" :PoEBot, a simple Path of Exile IRC Bot\n", 'UTF-8')) #User authentication
 irc.send(bytes("JOIN "+ channel +"\n", 'UTF-8'))        #tries to join channel, probably doesnt
 time.sleep(15)

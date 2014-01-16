@@ -14,8 +14,9 @@ The bot will also act as a timer: at one hour to an event, and five minutes befo
 -Python 3.3
 -pytz
 -datetime
+-requests
 
-The two packages were not included by default on my install, so they may not be on yours either.
+The packages were not included by default on my install, so they may not be on yours either.
 
 Within PoEBot.py, you should also edit the server, channel, and botnick to appropriate values. I have not yet added an authentication feature yet.
 
