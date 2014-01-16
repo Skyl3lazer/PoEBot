@@ -270,3 +270,6 @@ while 1:    #puts it in a loop
    if text.find(b':!help') != -1:
      print("Command found - Help")
      irc.send(bytes('PRIVMSG '+channel+' :'+"!next - Displays next upcoming event, and any currently running event"+'\r\n', 'UTF-8'))
+     irc.send(bytes('PRIVMSG '+channel+' :'+"!place/!rank - Displays the place of the streamer in the current race"+'\r\n', 'UTF-8'))
+   if text.find(b':!about') != -1:  #you don't have to keep this obviously, but credit is nice :)
+     irc.send(bytes('PRIVMSG '+channel+' :'+"PoEBot - A PoE race IRC/Twitch bot by Skyl3lazer! https://github.com/Skyl3lazer/PoEBot"+'\r\n', 'UTF-8'))
