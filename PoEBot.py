@@ -39,6 +39,7 @@ NET = int(until.total_seconds())
 place = None
 ch = 'none'
 lg = 'none'
+last_message = datetime.datetime.now(MYTZ)
 #Done Initializing
 
 
