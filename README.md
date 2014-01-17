@@ -9,6 +9,12 @@ This is a very simple IRC bot, meant to join a channel and assist with tracking 
 
 !help will display the help (currently just !next and how it works)
 
+!track <account> (admin only) will set the account to be tracked
+
+!place/!rank will tell the rank of the tracked account in the current race, if one is active, and if they are on the ladder.
+
+!about will give me credit :D
+
 The bot will also act as a timer: at one hour to an event, and five minutes before, it will say into the channel that an event is upcoming, along with details.
 
 -Python 3.3
