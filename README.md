@@ -7,7 +7,7 @@ This is a very simple IRC bot, meant to join a channel and assist with tracking 
 
 !next will display the currently running race, if any, and the next upcoming event, with appropriate timers for time remaining and time until
 
-!help will display the help (currently just !next and how it works)
+!help will display the help
 
 !track <account> (admin only) will set the account to be tracked
 

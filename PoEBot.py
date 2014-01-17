@@ -18,6 +18,7 @@ MYTZ=pytz.timezone('US/Eastern') #CHANGE IF NOT EASTERN
 administrators=[b'User1', b'User2'] #List any channel admins here. They will have access to all commands! NOTE THE b IS NECESSARY BEFORE EACH USER
 rate_limit = 10.0 #seconds between messages. 0 means unlimited messages
 defLeague = None #Non-race league for tracking. Change if you want to track a league when races aren't active, eg "Nemesis" or "Domination". Quotes important
+trackAccount = None # Change this to 'account name' of the streamer to have it be the default tracked account. Single quotes important.
 #END SETTINGS
 
 ZULU=pytz.timezone('Zulu')  #DONTCHANGE
@@ -38,9 +39,11 @@ timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, 
 until = timeConverted - now
 NET = int(until.total_seconds())
 place = None
-ch = 'none'
 lg = 'none'
+ch = trackAccount
 last_message = datetime.datetime.now(MYTZ)
+if not(ch is None):
+ place = 0
 #Done Initializing
 
 
@@ -365,7 +368,7 @@ while 1:    #puts it in a loop
     if text.find(b':!help') != -1:
       print("Command found - Help")
       irc.send(bytes('PRIVMSG '+channel+' :'+"!next - Displays next upcoming event, and any currently running event"+'\r\n', 'UTF-8'))
-      irc.send(bytes('PRIVMSG '+channel+' :'+"!place/!rank - Displays the place of the streamer in the current race"+'\r\n', 'UTF-8'))
+      irc.send(bytes('PRIVMSG '+channel+' :'+"!place/!rank - Displays the place of the !track ed account in the current race"+'\r\n', 'UTF-8'))
       last_message = datetime.datetime.now(MYTZ)
     if text.find(b':!about') != -1:  #you don't have to keep this obviously, but credit is nice :)
       irc.send(bytes('PRIVMSG '+channel+' :'+"PoEBot - A PoE race IRC/Twitch bot by Skyl3lazer! https://github.com/Skyl3lazer/PoEBot"+'\r\n', 'UTF-8'))
