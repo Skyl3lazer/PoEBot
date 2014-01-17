@@ -184,7 +184,6 @@ while 1:    #puts it in a loop
    text=irc.recv(2040)  #receive the text
    current=datetime.datetime.now(MYTZ)
    time_passed=current-last_message
-   print(time_passed)
    print(text)   #print text to console
    if text.find(b'Tweet us your ideas!') != -1:                   #check to join channel
       print("I SEE IT")
@@ -303,6 +302,7 @@ while 1:    #puts it in a loop
          until=str(until)
          until = until[:-7]
          irc.send(bytes('PRIVMSG '+channel+' :EVENT IN PROGRESS - '+events[0]['id'] +' - Started at '+events[0]['startAt']+', ends at '+events[0]['endAt']+' - '+until+' remaining - '+events[0]['url']+'\r\n', 'UTF-8'))
+         time.sleep(1) #prevent Twitch throttling the second message
          nextEventTime = events[1]['startAt']
          eventTimeY=int(nextEventTime[:4])
          eventTimeM=int(nextEventTime[5:-13])
