@@ -219,10 +219,10 @@ while 1:    #puts it in a loop
        r = requests.get(address)
        ladder=r.json()
        for person in ladder['entries']:
-          if person['account']['name']==ch:
+          if person['account']['name'].lower()==ch.lower():
            place = person['rank']
        if place == 0:
-        irc.send(bytes('PRIVMSG '+channel+' :'+'Account '+str(ch)+' in league '+str(lg)+' is not on the ladder'+'\r\n', 'UTF-8')) 
+        irc.send(bytes('PRIVMSG '+channel+' :'+'Account '+str(ch)+' in league '+str(lg)+' is not in the top 200 on the ladder'+'\r\n', 'UTF-8')) 
        else:
         irc.send(bytes('PRIVMSG '+channel+' :'+'Account '+str(ch)+' in league '+str(lg)+' is Rank '+str(place)+'\r\n', 'UTF-8'))
       else:
