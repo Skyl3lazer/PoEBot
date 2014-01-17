@@ -17,6 +17,7 @@ port = 6667
 MYTZ=pytz.timezone('US/Eastern') #CHANGE IF NOT EASTERN
 administrators=[b'User1', b'User2'] #List any channel admins here. They will have access to all commands! NOTE THE b IS NECESSARY BEFORE EACH USER
 rate_limit = 10.0 #seconds between messages. 0 means unlimited messages
+defLeague = None #Non-race league for tracking. Change if you want to track a league when races aren't active, eg "Nemesis" or "Domination". Quotes important
 #END SETTINGS
 
 ZULU=pytz.timezone('Zulu')  #DONTCHANGE
@@ -171,7 +172,6 @@ else:
   
 
 
-
 while 1:    #puts it in a loop
    sha=0
    wit=0
@@ -193,7 +193,6 @@ while 1:    #puts it in a loop
       print("Return Ping Sent")
       print(bytes('PONG ' + text.split() [1].decode('utf-8') + '\r\n', 'UTF-8'))
       irc.send(bytes('PONG ' + text.split() [1].decode('utf-8') + '\r\n', 'UTF-8')) #returns 'PONG' back to the server (prevents pinging out!)
-   
    for adm in administrators:
      if command == 0:
       if text.find(adm) != -1:
@@ -269,10 +268,53 @@ while 1:    #puts it in a loop
          irc.send(bytes('PRIVMSG '+channel+' :'+'Account '+str(ch)+' in league '+str(lg)+' is not in the top 200 on the ladder'+'\r\n',  'UTF-8'))  
          last_message = datetime.datetime.now(MYTZ)
         else: 
-         irc.send(bytes('PRIVMSG '+channel+' :'+'Account '+str(ch)+' in league '+str(lg)+' is Rank '+str(place)+' overall and rank '+str(cla)+' '+className+'\r\n', 'UTF-8'))
+         irc.send(bytes('PRIVMSG '+channel+' :'+'Account '+str(ch)+' in league '+str(lg)+' is Rank '+str(place)+' overall and Rank '+str(cla)+' '+className+'\r\n', 'UTF-8'))
          last_message = datetime.datetime.now(MYTZ)
+       elif defLeague is None:
+        irc.send(bytes('PRIVMSG '+channel+' :'+'No races are currently running!'+'\r\n',  'UTF-8'))  
+        last_message = datetime.datetime.now(MYTZ)
        else:
-         irc.send(bytes('PRIVMSG '+channel+' :'+'No Event in Progress'+'\r\n', 'UTF-8'))
+        address="http://api.pathofexile.com/ladders/"+defLeague+"?limit=200"
+        r = requests.get(address)
+        ladder=r.json()
+        for person in ladder['entries']:
+           if person['character']['class'] == "Witch":
+            wit += 1
+           if person['character']['class'] == "Marauder":
+            mar += 1
+           if person['character']['class'] == "Shadow":
+            sha += 1
+           if person['character']['class'] == "Templar":
+            tem += 1
+           if person['character']['class'] == "Duelist":
+            due += 1
+           if person['character']['class'] == "Scion":
+            sci += 1 
+           if person['character']['class'] == "Ranger":
+            ran += 1
+           if person['account']['name'].lower()==ch.lower():
+            ch=person['account']['name']
+            place = person['rank']
+            className=person['character']['class']
+            if person['character']['class'] == "Witch":
+             cla=wit
+            if person['character']['class'] == "Marauder":
+             cla=mar
+            if person['character']['class'] == "Shadow":
+             cla=sha
+            if person['character']['class'] == "Templar":
+             cla=tem
+            if person['character']['class'] == "Duelist":
+             cla=due
+            if person['character']['class'] == "Scion":
+             cla=sci
+            if person['character']['class'] == "Ranger":
+             cla=ran
+        if place == 0:
+         irc.send(bytes('PRIVMSG '+channel+' :'+'Account '+str(ch)+' in league '+str(lg)+' is not in the top 200 on the ladder'+'\r\n',  'UTF-8'))  
+         last_message = datetime.datetime.now(MYTZ)
+        else: 
+         irc.send(bytes('PRIVMSG '+channel+' :'+'Account '+str(ch)+' in league '+str(defLeague)+' is Rank '+str(place)+' overall and Rank '+str(cla)+' '+className+'\r\n', 'UTF-8'))
          last_message = datetime.datetime.now(MYTZ)
     if text.find(b':!next') != -1:                          #!next
        print("Command found - Next Event")
