@@ -185,7 +185,7 @@ while 1:    #puts it in a loop
     if command == 0:
      if text.find(adm) != -1:
       if text.find(b':!track') != -1: #!track - Set the character and League to track
-       print("Adm Command Found - Track")
+       print("Admin Command Found - Track")
        place = 0
        if len(text.split(maxsplit=5))>4:
         ch=text.split(maxsplit=5)[4]
@@ -219,7 +219,7 @@ while 1:    #puts it in a loop
        r = requests.get(address)
        ladder=r.json()
        for person in ladder['entries']:
-          if person['character']['name']==ch:
+          if person['account']['name']==ch:
            place = person['rank']
        if place == 0:
         irc.send(bytes('PRIVMSG '+channel+' :'+'Account '+str(ch)+' in league '+str(lg)+' is not on the ladder'+'\r\n', 'UTF-8')) 
