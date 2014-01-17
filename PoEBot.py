@@ -1,12 +1,16 @@
+#!/bin/env python3
+# -*- coding: utf-8 -*-
+
+import datetime
+import json
+import math
+import pytz
+import requests
 import socket
 import sys
-import requests
-import json
-import datetime
-import pytz
-import time
-import threading
 import sys
+import threading
+import time
 
 #SETTINGS
 server = "SERVERADDRESS"       
@@ -22,28 +26,27 @@ trackAccount = None # Change this to 'account name' of the streamer to have it b
 #END SETTINGS
 
 ZULU=pytz.timezone('Zulu')  #DONTCHANGE
+EVENT_TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
-#Initilization
-NET = 0
-r = requests.get('http://api.pathofexile.com/leagues?type=event')
-events=r.json()
-NextEvent=events[0];
-now = datetime.datetime.now(MYTZ)
-nextEventTime = events[0]['startAt']
-eventTimeY=int(nextEventTime[:4])
-eventTimeM=int(nextEventTime[5:-13])
-eventTimeD=int(nextEventTime[8:-10])
-eventTimeH=int(nextEventTime[11:-7])
-eventTimeMin=int(nextEventTime[14:-4])
-timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)
-until = timeConverted - now
-NET = int(until.total_seconds())
+
+def parseEventDate(event):
+   return datetime.datetime.strptime(event['startAt'], EVENT_TIME_FORMAT).replace(tzinfo=ZULU)
+
+def secondsUntil(then):
+   now = datetime.datetime.now(MYTZ)
+   return math.ceil((then - now).total_seconds())
+
+# Initilization
+events = requests.get('http://api.pathofexile.com/leagues?type=event').json()
+NextEvent = events[0]
+start = parseEventDate(NextEvent)
+until = secondsUntil(start)
 place = None
 lg = 'none'
 ch = trackAccount
 last_message = datetime.datetime.now(MYTZ)
 if not(ch is None):
- place = 0
+   place = 0
 #Done Initializing
 
 
@@ -57,120 +60,105 @@ irc.send(bytes("USER "+ botnick +" "+ botnick +" "+ botnick +" :Skyl3lazer's PoE
 irc.send(bytes("JOIN "+ channel +"\n", 'UTF-8'))        #tries to join channel, probably doesnt
 
 
+   
+
 #Race Alerts
 def hourAlert():
    print("HOURALERT")
-   r = requests.get('http://api.pathofexile.com/leagues?type=event')
-   events=r.json()
-   NextEvent=events[0];
-   now = datetime.datetime.now(MYTZ)
-   print(now)
-   nextEventTime = events[0]['startAt']
-   eventTimeY=int(nextEventTime[:4])
-   eventTimeM=int(nextEventTime[5:-13])
-   eventTimeD=int(nextEventTime[8:-10])
-   eventTimeH=int(nextEventTime[11:-7])
-   eventTimeMin=int(nextEventTime[14:-4])
-   timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)   
-   until = timeConverted - now
-   NET = int(until.total_seconds())
-   if until.total_seconds() > 0:
-    irc.send(bytes('PRIVMSG '+channel+' :'+"EVENT ALERT - 1 HOUR - "+NextEvent['id'] +' - Occurs at '+NextEvent['startAt']+' - '+NextEvent['url']+'\r\n', 'UTF-8')) #gives event info
-    print("Starting Timer to event - "+str(NET-300))
-    return [NET-300,'e']
-   else:
-    NextEvent=events[1];
-    now = datetime.datetime.now(MYTZ)
-    nextEventTime = events[1]['startAt']
-    eventTimeY=int(nextEventTime[:4])
-    eventTimeM=int(nextEventTime[5:-13])
-    eventTimeD=int(nextEventTime[8:-10])
-    eventTimeH=int(nextEventTime[11:-7])
-    eventTimeMin=int(nextEventTime[14:-4])
-    timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)    
-    until = timeConverted - now
-    NET = int(until.total_seconds())
-    irc.send(bytes('PRIVMSG '+channel+' :'+"EVENT ALERT - 1 HOUR - "+NextEvent['id'] +' - Occurs at '+NextEvent['startAt']+' - '+NextEvent['url']+'\r\n', 'UTF-8')) #gives event info
-    print("Starting Timer to next event - "+str(NET-300))
-    return [NET-300,'e']
+   events = requests.get('http://api.pathofexile.com/leagues?type=event').json()
+   
+   NextEvent = events[0]
+   start = parseEventDate(NextEvent)
+   until = secondsUntil(start)
+
+   # First listed might have started already
+   if until <= 0:
+      NextEvent = events[1]
+      start = parseEventDate(NextEvent)
+      until = secondsUntil(start)
+   
+   irc.send(bytes('PRIVMSG %(chan)s :EVENT ALERT - 1 HOUR - %(id) - Occurs at %(start)s - %(url)s\r\n' % {
+            "chan"  : channel,
+            "id"    : NextEvent['id'],
+            "start" : start.strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "url"   : NextEvent['url']
+            }), 'UTF-8')
+   print("Starting Timer to event - %d" % (until - 300))
+   return [until - 300, 'e']
+
+
 def startAlert():
    print("STARTALERT")
-   r = requests.get('http://api.pathofexile.com/leagues?type=event')
-   events=r.json()
-   NextEvent=events[0];
-   now = datetime.datetime.now(MYTZ)
-   print(now)
-   nextEventTime = events[1]['startAt']
-   eventTimeY=int(nextEventTime[:4])
-   eventTimeM=int(nextEventTime[5:-13])
-   eventTimeD=int(nextEventTime[8:-10])
-   eventTimeH=int(nextEventTime[11:-7])
-   eventTimeMin=int(nextEventTime[14:-4])
-   timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)
-   until = timeConverted - now
-   NET = int(until.total_seconds())
-   if until.total_seconds() > 3600:
-    irc.send(bytes('PRIVMSG '+channel+' :'+"EVENT ALERT - STARTING IN 5 MINUTES - "+NextEvent['id'] +' - '+NextEvent['url']+'\r\n', 'UTF-8')) #gives event info
-    print("Starting Timer to 1hr - " + str(NET-3600))
-    return [NET-3600,'h']
-   elif until.total_seconds() > 300:
-    irc.send(bytes('PRIVMSG '+channel+' :'+"EVENT ALERT - STARTING IN 5 MINUTES - "+NextEvent['id'] +' - '+NextEvent['url']+'\r\n', 'UTF-8')) #gives event info
-	#TODO - Info about the race coming up in under an hour
-    print("Starting Timer to event - " + str(NET-300))
-    return [NET-300,'e']
+   events = requests.get('http://api.pathofexile.com/leagues?type=event').json()
+
+   NextEvent=events[0]
+   start = parseEventDate(events[1])
+   until = secondsUntil(start)
+
+   if until > 3600:
+      irc.send(bytes('PRIVMSG %(chan)s :EVENT ALERT - STARTING IN 5 MINUTES - %(id) - %(url)s\r\n' % {
+               "chan"  : channel,
+               "id"    : NextEvent['id'],
+               "start" : start.strftime("%Y-%m-%d %H:%M:%S UTC"),
+               "url"   : NextEvent['url']
+               }), 'UTF-8')
+      print("Starting Timer to 1hr - " + str(until - 3600))
+      return [until - 3600, 'h']
+   elif until > 300:
+      irc.send(bytes('PRIVMSG %(chan)s :EVENT ALERT - STARTING IN 5 MINUTES - %(id) - %(url)s\r\n' % {
+               "chan"  : channel,
+               "id"    : NextEvent['id'],
+               "start" : start.strftime("%Y-%m-%d %H:%M:%S UTC"),
+               "url"   : NextEvent['url']
+               }), 'UTF-8')
+      #TODO - Info about the race coming up in under an hour
+      print("Starting Timer to event - " + str(until - 300))
+      return [until - 300, 'e']
    else:
-    print("Event Collision - SUB 5 MINUTE EVENT CHAIN")
-    NextEvent=events[1];
-    irc.send(bytes('PRIVMSG '+channel+' :'+"EVENT COLLISION ALERT - THERE MAY BE ERRORS HERE OR WITH THE NEXT ALERT - "+NextEvent['id'] +' - '+NextEvent['url']+'\r\n', 'UTF-8')) #gives event info
-    now = datetime.datetime.now(MYTZ)
-    nextEventTime = events[2]['startAt']
-    eventTimeY=int(nextEventTime[:4])
-    eventTimeM=int(nextEventTime[5:-13])
-    eventTimeD=int(nextEventTime[8:-10])
-    eventTimeH=int(nextEventTime[11:-7])
-    eventTimeMin=int(nextEventTime[14:-4])
-    timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)
-    until = timeConverted - now
-    NET = int(until.total_seconds())
-    print("Starting Timer to next event - " +str(NET))
-    return [NET,'e']
+      print("Event Collision - SUB 5 MINUTE EVENT CHAIN")
+      NextEvent = events[1]
+      start = parseEventDate(events[2])
+      until = secondsUntil(start)
+      
+      irc.send(bytes('PRIVMSG %(chan)s :EVENT COLLISION ALERT - THERE MAY BE ERRORS HERE OR WITH THE NEXT ALERT - %(id) - %(url)s\r\n' % {
+               "chan"  : channel,
+               "id"    : NextEvent['id'],
+               "start" : start.strftime("%Y-%m-%d %H:%M:%S UTC"),
+               "url"   : NextEvent['url']
+               }), 'UTF-8')
+      
+      
+      print("Starting Timer to next event - "  + str(until))
+      return [until, 'e']
 	
 def alertLoop(n, t):
-  while 1:
-    time.sleep(n)
-    r=t()
-    n=r[0]
-    t=r[1]
-    if t == 'e':
-     t = startAlert
-    elif t == 'h':
-     t = hourAlert
-    else:
-     print("Error occured")
+   while 1:
+      time.sleep(n)
+      r=t()
+      n=r[0]
+      t=r[1]
+      if t == 'e':
+         t = startAlert
+      elif t == 'h':
+         t = hourAlert
+      else:
+         print("Error occured")
    
-if until.total_seconds() > 3600: #Handle First event after bot start
-  print("Starting Timer to 1hr - " + str(NET-3600))
-  thread = threading.Thread(target=alertLoop, args=(NET-3600, hourAlert))
-  thread.start()
-elif until.total_seconds() > 300:
-  print("Starting Timer to event - " + str(NET-300))
-  thread = threading.Thread(target=alertLoop, args=(NET-300, startAlert))
-  thread.start()
+if until > 3600: #Handle First event after bot start
+   print("Starting Timer to 1hr - " + str(until - 3600))
+   thread = threading.Thread(target=alertLoop, args=(until - 3600, hourAlert))
+   thread.start()
+elif until > 300:
+   print("Starting Timer to event - " + str(NET - 300))
+   thread = threading.Thread(target=alertLoop, args=(until - 300, startAlert))
+   thread.start()
 else:
-  NextEvent=events[1];
-  now = datetime.datetime.now(MYTZ)
-  nextEventTime = events[1]['startAt']
-  eventTimeY=int(nextEventTime[:4])
-  eventTimeM=int(nextEventTime[5:-13])
-  eventTimeD=int(nextEventTime[8:-10])
-  eventTimeH=int(nextEventTime[11:-7])
-  eventTimeMin=int(nextEventTime[14:-4])
-  timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)
-  until = timeConverted - now
-  NET = int(until.total_seconds())
-  print("Starting Timer to next event 1h - "+str(NET-3600))
-  thread = threading.Thread(target=alertLoop, args=(NET-3600, hourAlert))
-  thread.start()
+   NextEvent = events[1]
+   start = parseEventDate(NextEvent)
+   until = secondsUntil(start)
+   print("Starting Timer to next event 1h - " + str(until - 3600))
+   thread = threading.Thread(target=alertLoop, args=(until - 3600, hourAlert))
+   thread.start()
 #End Alerts
   
 
