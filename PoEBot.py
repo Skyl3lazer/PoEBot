@@ -215,7 +215,7 @@ while 1:    #puts it in a loop
       until = until[:-7]
       lg=events[0]['id']
       if timeConverted < now: #Event Running
-       address="http://api.pathofexile.com/ladders/"+lg
+       address="http://api.pathofexile.com/ladders/"+lg+"?limit=200"
        r = requests.get(address)
        ladder=r.json()
        for person in ladder['entries']:
