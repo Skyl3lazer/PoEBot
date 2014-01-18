@@ -1,12 +1,16 @@
+#!/bin/env python3
+# -*- coding: utf-8 -*-
+
+import datetime
+import json
+import math
+import pytz
+import requests
 import socket
 import sys
-import requests
-import json
-import datetime
-import pytz
-import time
-import threading
 import sys
+import threading
+import time
 
 #SETTINGS
 server = "SERVERADDRESS"       
@@ -21,29 +25,30 @@ defLeague = None #Non-race league for tracking. Change if you want to track a le
 trackAccount = None # Change this to 'account name' of the streamer to have it be the default tracked account. Single quotes important.
 #END SETTINGS
 
-ZULU=pytz.timezone('Zulu')  #DONTCHANGE
+ZULU = pytz.timezone('Zulu')  #DONTCHANGE
+EVENT_TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+ANNOUNCE_TIME_FORMAT = "%Y-%m-%d %H:%M:%S UTC"
 
-#Initilization
-NET = 0
-r = requests.get('http://api.pathofexile.com/leagues?type=event')
-events=r.json()
-NextEvent=events[0];
-now = datetime.datetime.now(MYTZ)
-nextEventTime = events[0]['startAt']
-eventTimeY=int(nextEventTime[:4])
-eventTimeM=int(nextEventTime[5:-13])
-eventTimeD=int(nextEventTime[8:-10])
-eventTimeH=int(nextEventTime[11:-7])
-eventTimeMin=int(nextEventTime[14:-4])
-timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)
-until = timeConverted - now
-NET = int(until.total_seconds())
-place = None
+
+def parseEventDate(date):
+   return datetime.datetime.strptime(date, EVENT_TIME_FORMAT).replace(tzinfo=ZULU)
+
+def secondsUntil(then):
+   now = datetime.datetime.now(MYTZ)
+   return math.ceil((then - now).total_seconds())
+
+def send(irc, to, msg):
+   irc.send(bytes('PRIVMSG %s :%s\r\n' % (to, msg), "UTF-8"))
+
+
+# Initilization
+events = requests.get('http://api.pathofexile.com/leagues?type=event').json()
+NextEvent = events[0]
+start = parseEventDate(NextEvent['startAt'])
+until = secondsUntil(start)
 lg = 'none'
-ch = trackAccount
+tracking = trackAccount
 last_message = datetime.datetime.now(MYTZ)
-if not(ch is None):
- place = 0
 #Done Initializing
 
 
@@ -57,137 +62,147 @@ irc.send(bytes("USER "+ botnick +" "+ botnick +" "+ botnick +" :Skyl3lazer's PoE
 irc.send(bytes("JOIN "+ channel +"\n", 'UTF-8'))        #tries to join channel, probably doesnt
 
 
+   
+
 #Race Alerts
 def hourAlert():
    print("HOURALERT")
-   r = requests.get('http://api.pathofexile.com/leagues?type=event')
-   events=r.json()
-   NextEvent=events[0];
-   now = datetime.datetime.now(MYTZ)
-   print(now)
-   nextEventTime = events[0]['startAt']
-   eventTimeY=int(nextEventTime[:4])
-   eventTimeM=int(nextEventTime[5:-13])
-   eventTimeD=int(nextEventTime[8:-10])
-   eventTimeH=int(nextEventTime[11:-7])
-   eventTimeMin=int(nextEventTime[14:-4])
-   timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)   
-   until = timeConverted - now
-   NET = int(until.total_seconds())
-   if until.total_seconds() > 0:
-    irc.send(bytes('PRIVMSG '+channel+' :'+"EVENT ALERT - 1 HOUR - "+NextEvent['id'] +' - Occurs at '+NextEvent['startAt']+' - '+NextEvent['url']+'\r\n', 'UTF-8')) #gives event info
-    print("Starting Timer to event - "+str(NET-300))
-    return [NET-300,'e']
-   else:
-    NextEvent=events[1];
-    now = datetime.datetime.now(MYTZ)
-    nextEventTime = events[1]['startAt']
-    eventTimeY=int(nextEventTime[:4])
-    eventTimeM=int(nextEventTime[5:-13])
-    eventTimeD=int(nextEventTime[8:-10])
-    eventTimeH=int(nextEventTime[11:-7])
-    eventTimeMin=int(nextEventTime[14:-4])
-    timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)    
-    until = timeConverted - now
-    NET = int(until.total_seconds())
-    irc.send(bytes('PRIVMSG '+channel+' :'+"EVENT ALERT - 1 HOUR - "+NextEvent['id'] +' - Occurs at '+NextEvent['startAt']+' - '+NextEvent['url']+'\r\n', 'UTF-8')) #gives event info
-    print("Starting Timer to next event - "+str(NET-300))
-    return [NET-300,'e']
+   events = requests.get('http://api.pathofexile.com/leagues?type=event').json()
+   
+   NextEvent = events[0]
+   start = parseEventDate(NextEvent['startAt'])
+   until = secondsUntil(start)
+
+   # First listed might have started already
+   if until <= 0:
+      NextEvent = events[1]
+      start = parseEventDate(NextEvent['startAt'])
+      until = secondsUntil(start)
+   
+   send(irc, channel, 'EVENT ALERT - 1 HOUR - %(id) - Occurs at %(start)s - %(url)s' % {
+         "id"    : NextEvent['id'],
+         "start" : start.strftime(ANNOUNCE_TIME_FORMAT),
+         "url"   : NextEvent['url']
+         })
+   print("Starting Timer to event - %d" % (until - 300))
+   return [until - 300, 'e']
+
+
 def startAlert():
    print("STARTALERT")
-   r = requests.get('http://api.pathofexile.com/leagues?type=event')
-   events=r.json()
-   NextEvent=events[0];
-   now = datetime.datetime.now(MYTZ)
-   print(now)
-   nextEventTime = events[1]['startAt']
-   eventTimeY=int(nextEventTime[:4])
-   eventTimeM=int(nextEventTime[5:-13])
-   eventTimeD=int(nextEventTime[8:-10])
-   eventTimeH=int(nextEventTime[11:-7])
-   eventTimeMin=int(nextEventTime[14:-4])
-   timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)
-   until = timeConverted - now
-   NET = int(until.total_seconds())
-   if until.total_seconds() > 3600:
-    irc.send(bytes('PRIVMSG '+channel+' :'+"EVENT ALERT - STARTING IN 5 MINUTES - "+NextEvent['id'] +' - '+NextEvent['url']+'\r\n', 'UTF-8')) #gives event info
-    print("Starting Timer to 1hr - " + str(NET-3600))
-    return [NET-3600,'h']
-   elif until.total_seconds() > 300:
-    irc.send(bytes('PRIVMSG '+channel+' :'+"EVENT ALERT - STARTING IN 5 MINUTES - "+NextEvent['id'] +' - '+NextEvent['url']+'\r\n', 'UTF-8')) #gives event info
-	#TODO - Info about the race coming up in under an hour
-    print("Starting Timer to event - " + str(NET-300))
-    return [NET-300,'e']
+   events = requests.get('http://api.pathofexile.com/leagues?type=event').json()
+
+   NextEvent = events[0]
+   start = parseEventDate(events[1]['startAt'])
+   until = secondsUntil(start)
+
+   if until > 3600:
+      send(irc, channel, 'EVENT ALERT - STARTING IN 5 MINUTES - %(id) - %(url)s' % {
+            "id"    : NextEvent['id'],
+            "start" : start.strftime(ANNOUNCE_TIME_FORMAT),
+            "url"   : NextEvent['url']
+            })
+      print("Starting Timer to 1hr - " + str(until - 3600))
+      return [until - 3600, 'h']
+   elif until > 300:
+      send(irc, channel, 'EVENT ALERT - STARTING IN 5 MINUTES - %(id) - %(url)s' % {
+            "id"    : NextEvent['id'],
+            "start" : start.strftime(ANNOUNCE_TIME_FORMAT),
+            "url"   : NextEvent['url']
+            })
+      #TODO - Info about the race coming up in under an hour
+      print("Starting Timer to event - " + str(until - 300))
+      return [until - 300, 'e']
    else:
-    print("Event Collision - SUB 5 MINUTE EVENT CHAIN")
-    NextEvent=events[1];
-    irc.send(bytes('PRIVMSG '+channel+' :'+"EVENT COLLISION ALERT - THERE MAY BE ERRORS HERE OR WITH THE NEXT ALERT - "+NextEvent['id'] +' - '+NextEvent['url']+'\r\n', 'UTF-8')) #gives event info
-    now = datetime.datetime.now(MYTZ)
-    nextEventTime = events[2]['startAt']
-    eventTimeY=int(nextEventTime[:4])
-    eventTimeM=int(nextEventTime[5:-13])
-    eventTimeD=int(nextEventTime[8:-10])
-    eventTimeH=int(nextEventTime[11:-7])
-    eventTimeMin=int(nextEventTime[14:-4])
-    timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)
-    until = timeConverted - now
-    NET = int(until.total_seconds())
-    print("Starting Timer to next event - " +str(NET))
-    return [NET,'e']
+      print("Event Collision - SUB 5 MINUTE EVENT CHAIN")
+      NextEvent = events[1]
+      start = parseEventDate(events[2]['startAt'])
+      until = secondsUntil(start)
+      
+      send(irc, channel, 'EVENT COLLISION ALERT - THERE MAY BE ERRORS HERE OR WITH THE NEXT ALERT - %(id) - %(url)s' % {
+            "id"    : NextEvent['id'],
+            "start" : start.strftime(ANNOUNCE_TIME_FORMAT),
+            "url"   : NextEvent['url']
+            })
+      
+      print("Starting Timer to next event - "  + str(until))
+      return [until, 'e']
 	
 def alertLoop(n, t):
-  while 1:
-    time.sleep(n)
-    r=t()
-    n=r[0]
-    t=r[1]
-    if t == 'e':
-     t = startAlert
-    elif t == 'h':
-     t = hourAlert
-    else:
-     print("Error occured")
+   while 1:
+      time.sleep(n)
+      r = t()
+      n = r[0]
+      t = r[1]
+      if t == 'e':
+         t = startAlert
+      elif t == 'h':
+         t = hourAlert
+      else:
+         print("Error occured")
    
-if until.total_seconds() > 3600: #Handle First event after bot start
-  print("Starting Timer to 1hr - " + str(NET-3600))
-  thread = threading.Thread(target=alertLoop, args=(NET-3600, hourAlert))
-  thread.start()
-elif until.total_seconds() > 300:
-  print("Starting Timer to event - " + str(NET-300))
-  thread = threading.Thread(target=alertLoop, args=(NET-300, startAlert))
-  thread.start()
+if until > 3600: #Handle First event after bot start
+   print("Starting Timer to 1hr - " + str(until - 3600))
+   thread = threading.Thread(target=alertLoop, args=(until - 3600, hourAlert))
+   thread.start()
+elif until > 300:
+   print("Starting Timer to event - " + str(until - 300))
+   thread = threading.Thread(target=alertLoop, args=(until - 300, startAlert))
+   thread.start()
 else:
-  NextEvent=events[1];
-  now = datetime.datetime.now(MYTZ)
-  nextEventTime = events[1]['startAt']
-  eventTimeY=int(nextEventTime[:4])
-  eventTimeM=int(nextEventTime[5:-13])
-  eventTimeD=int(nextEventTime[8:-10])
-  eventTimeH=int(nextEventTime[11:-7])
-  eventTimeMin=int(nextEventTime[14:-4])
-  timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)
-  until = timeConverted - now
-  NET = int(until.total_seconds())
-  print("Starting Timer to next event 1h - "+str(NET-3600))
-  thread = threading.Thread(target=alertLoop, args=(NET-3600, hourAlert))
-  thread.start()
+   NextEvent = events[1]
+   start = parseEventDate(NextEvent['startAt'])
+   until = secondsUntil(start)
+   print("Starting Timer to next event 1h - " + str(until - 3600))
+   thread = threading.Thread(target=alertLoop, args=(until - 3600, hourAlert))
+   thread.start()
 #End Alerts
   
 
 
+def announceRank(irc, channel, account, league):
+   ladder = requests.get("http://api.pathofexile.com/ladders/%s?limit=200" % (league,)).json()
+   
+   byClass = { "Duelist"  : 0,
+               "Marauder" : 0,
+               "Ranger"   : 0,
+               "Scion"    : 0,
+               "Shadow"   : 0,
+               "Templar"  : 0,
+               "Witch"    : 0 }
+   charClass = None
+   rank = None
+   rankInClass = None
+
+   for entry in ladder['entries']:
+      byClass[entry['character']['class']] += 1
+      if entry['account']['name'].lower() == account.lower():
+         charClass = entry['character']['class']
+         rank = entry['rank']
+         rankInClass = byClass[entry['character']['class']]
+         break
+           
+   if rank is None:
+      send(irc, channel, "Account %(account)s in league %(league)s is not in the top 200 on the ladder" % {
+            "account" : account,
+            "league"  : league
+            })
+   else:
+      send(irc, channel, "Account %(account)s in league %(league)s is Rank %(rank)s overall and Rank %(crak)s %(class)s" % {
+            "account" : account,
+            "league"  : league,
+            "rank"    : rank,
+            "class"   : charClass,
+            "crank"   : rankInClass
+            })
+
+
 while 1:    #puts it in a loop
-   sha=0
-   wit=0
-   sci=0
-   due=0
-   mar=0
-   ran=0
-   tem=0
-   cla=0
-   command = 0
-   text=irc.recv(2040)  #receive the text
-   current=datetime.datetime.now(MYTZ)
-   time_passed=current-last_message
+   text = irc.recv(2040)  #receive the text
+   now = datetime.datetime.now(MYTZ)
+   time_passed = datetime.datetime.now(MYTZ) - last_message
+   last_message = now
+
    print(text)   #print text to console
    if text.find(b'Tweet us your ideas!') != -1:                   #check to join channel
       print("I SEE IT")
@@ -196,180 +211,80 @@ while 1:    #puts it in a loop
       print("Return Ping Sent")
       print(bytes('PONG ' + text.split() [1].decode('utf-8') + '\r\n', 'UTF-8'))
       irc.send(bytes('PONG ' + text.split() [1].decode('utf-8') + '\r\n', 'UTF-8')) #returns 'PONG' back to the server (prevents pinging out!)
-   for adm in administrators:
-     if command == 0:
-      if text.find(adm) != -1:
-       if text.find(b':!track') != -1: #!track - Set the character and League to track
-        print("Admin Command Found - Track")
-        place = 0
-        if len(text.split(maxsplit=5))>4:
-         ch=text.split(maxsplit=5)[4]
-         ch=str(ch)[2:-1]
-         irc.send(bytes('PRIVMSG '+channel+' :'+'Now tracking account '+str(ch)+'\r\n', 'UTF-8')) #gives event info
-        else:
-         irc.send(bytes('PRIVMSG '+channel+' :'+'Use: !track <accountName>'+'\r\n', 'UTF-8'))
-      command = 1
-   if time_passed.total_seconds() > rate_limit:
-    if text.find(b':!place') != -1 or text.find(b':!rank' ) != -1: #!Place\!Rank Command - Check current rank of tracked account
+   
+   if any([text.find(adm) != -1 for adm in administrators]):
+      if text.find(b':!track') != -1:
+         print("Admin Command Found - Track")
+         if len(text.split(maxsplit = 5)) > 4:
+            tracking = text.split(maxsplit = 5)[4]
+            tracking = str(ch)[2:-1]
+            send(irc, channel, "Now tracking account %s" % (tracking,))
+         else:
+            senc(irc, channel, "Use: !track <accountName>")
+
+   # Throttling?
+   if time_passed.total_seconds() <= rate_limit:
+      continue
+
+   if text.find(b':!place') != -1 or text.find(b':!rank' ) != -1: #!Place\!Rank Command - Check current rank of tracked account
       print("Command found - Place\Rank")
-      if place is None:
-       irc.send(bytes('PRIVMSG '+channel+' :'+'No Character being Tracked at the time'+'\r\n', 'UTF-8')) #gives event info
+      if tracking is None:
+         send(irc, channel, "No Character being Tracked at this time")
       else:
-       r = requests.get('http://api.pathofexile.com/leagues?type=event')
-       events=r.json()
-       now = datetime.datetime.now(MYTZ)
-       nextEventTime = events[0]['startAt']
-       eventTimeY=int(nextEventTime[:4])
-       eventTimeM=int(nextEventTime[5:-13])
-       eventTimeD=int(nextEventTime[8:-10])
-       eventTimeH=int(nextEventTime[11:-7])
-       eventTimeMin=int(nextEventTime[14:-4])
-       timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)
-       until = timeConverted - now
-       NET = until.seconds
-       until=str(until)
-       until = until[:-7]
-       lg=events[0]['id']
-       if timeConverted < now: #Event Running
-        address="http://api.pathofexile.com/ladders/"+lg+"?limit=200"
-        r = requests.get(address)
-        ladder=r.json()
-        for person in ladder['entries']:
-           if person['character']['class'] == "Witch":
-            wit += 1
-           if person['character']['class'] == "Marauder":
-            mar += 1
-           if person['character']['class'] == "Shadow":
-            sha += 1
-           if person['character']['class'] == "Templar":
-            tem += 1
-           if person['character']['class'] == "Duelist":
-            due += 1
-           if person['character']['class'] == "Scion":
-            sci += 1 
-           if person['character']['class'] == "Ranger":
-            ran += 1
-           if person['account']['name'].lower()==ch.lower():
-            ch=person['account']['name']
-            place = person['rank']
-            className=person['character']['class']
-            if person['character']['class'] == "Witch":
-             cla=wit
-            if person['character']['class'] == "Marauder":
-             cla=mar
-            if person['character']['class'] == "Shadow":
-             cla=sha
-            if person['character']['class'] == "Templar":
-             cla=tem
-            if person['character']['class'] == "Duelist":
-             cla=due
-            if person['character']['class'] == "Scion":
-             cla=sci
-            if person['character']['class'] == "Ranger":
-             cla=ran
-        if place == 0:
-         irc.send(bytes('PRIVMSG '+channel+' :'+'Account '+str(ch)+' in league '+str(lg)+' is not in the top 200 on the ladder'+'\r\n',  'UTF-8'))  
-         last_message = datetime.datetime.now(MYTZ)
-        else: 
-         irc.send(bytes('PRIVMSG '+channel+' :'+'Account '+str(ch)+' in league '+str(lg)+' is Rank '+str(place)+' overall and Rank '+str(cla)+' '+className+'\r\n', 'UTF-8'))
-         last_message = datetime.datetime.now(MYTZ)
-       elif defLeague is None:
-        irc.send(bytes('PRIVMSG '+channel+' :'+'No races are currently running!'+'\r\n',  'UTF-8'))  
-        last_message = datetime.datetime.now(MYTZ)
-       else:
-        address="http://api.pathofexile.com/ladders/"+defLeague+"?limit=200"
-        r = requests.get(address)
-        ladder=r.json()
-        for person in ladder['entries']:
-           if person['character']['class'] == "Witch":
-            wit += 1
-           if person['character']['class'] == "Marauder":
-            mar += 1
-           if person['character']['class'] == "Shadow":
-            sha += 1
-           if person['character']['class'] == "Templar":
-            tem += 1
-           if person['character']['class'] == "Duelist":
-            due += 1
-           if person['character']['class'] == "Scion":
-            sci += 1 
-           if person['character']['class'] == "Ranger":
-            ran += 1
-           if person['account']['name'].lower()==ch.lower():
-            ch=person['account']['name']
-            place = person['rank']
-            className=person['character']['class']
-            if person['character']['class'] == "Witch":
-             cla=wit
-            if person['character']['class'] == "Marauder":
-             cla=mar
-            if person['character']['class'] == "Shadow":
-             cla=sha
-            if person['character']['class'] == "Templar":
-             cla=tem
-            if person['character']['class'] == "Duelist":
-             cla=due
-            if person['character']['class'] == "Scion":
-             cla=sci
-            if person['character']['class'] == "Ranger":
-             cla=ran
-        if place == 0:
-         irc.send(bytes('PRIVMSG '+channel+' :'+'Account '+str(ch)+' in league '+str(lg)+' is not in the top 200 on the ladder'+'\r\n',  'UTF-8'))  
-         last_message = datetime.datetime.now(MYTZ)
-        else: 
-         irc.send(bytes('PRIVMSG '+channel+' :'+'Account '+str(ch)+' in league '+str(defLeague)+' is Rank '+str(place)+' overall and Rank '+str(cla)+' '+className+'\r\n', 'UTF-8'))
-         last_message = datetime.datetime.now(MYTZ)
-    if text.find(b':!next') != -1:                          #!next
-       print("Command found - Next Event")
-       r = requests.get('http://api.pathofexile.com/leagues?type=event')
-       events=r.json()
-       now = datetime.datetime.now(MYTZ)
-       nextEventTime = events[0]['startAt']
-       eventTimeY=int(nextEventTime[:4])
-       eventTimeM=int(nextEventTime[5:-13])
-       eventTimeD=int(nextEventTime[8:-10])
-       eventTimeH=int(nextEventTime[11:-7])
-       eventTimeMin=int(nextEventTime[14:-4])
-       timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)
-       until = timeConverted - now
-       NET = until.seconds
-       until=str(until)
-       until = until[:-7]
-       if timeConverted < now:
-         nextEventTime = events[0]['endAt']
-         eventTimeY=int(nextEventTime[:4])
-         eventTimeM=int(nextEventTime[5:-13])
-         eventTimeD=int(nextEventTime[8:-10])
-         eventTimeH=int(nextEventTime[11:-7])
-         eventTimeMin=int(nextEventTime[14:-4])
-         timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)
-         until = timeConverted - now
-         NET = until.seconds
-         until=str(until)
-         until = until[:-7]
-         irc.send(bytes('PRIVMSG '+channel+' :EVENT IN PROGRESS - '+events[0]['id'] +' - Started at '+events[0]['startAt']+', ends at '+events[0]['endAt']+' - '+until+' remaining - '+events[0]['url']+'\r\n', 'UTF-8'))
+         currentEvent = requests.get('http://api.pathofexile.com/leagues?type=event').json()[0]
+         start = parseEventDate(currentEvent['startAt'])
+         if start < now: # Event Running
+            announceRank(irc, channel, tracking, currentEvent['id'])
+         elif defLeague is not None:
+            announceRank(irc, channel, tracking, defLeague)
+         else:
+            send(irc, channel, "No races are currently running!")
+   
+   if text.find(b':!next') != -1:                          #!next
+      print("Command found - Next Event")
+      events = requests.get('http://api.pathofexile.com/leagues?type=event').json()
+      start = parseEventDate(events[0]['startAt'])
+
+      # Announce running event and next one
+      if start < now:
+         end = parseEventDate(events[0]['endAt'])
+         remain = end - now
+         send(irc, channel, "EVENT IN PROGRESS - %(id)s - Started at %(start)s, ends at %(end)s - %(remd)s%(remt)s remaining - %(url)s" % {
+               "id"    : events[0]['id'],
+               "url"   : events[0]['url'],
+               "start" : start.strftime(ANNOUNCE_TIME_FORMAT),
+               "end"   : end.strftime(ANNOUNCE_TIME_FORMAT),
+               "remd"  : "%d days " if remain.days != 0 else "",
+               "remt"  : (datetime.datetime.utcfromtimestamp(0) + datetime.timedelta(seconds=remain.seconds)).strftime("%H:%M:%S")
+               })
+
          time.sleep(1) #prevent Twitch throttling the second message
-         nextEventTime = events[1]['startAt']
-         eventTimeY=int(nextEventTime[:4])
-         eventTimeM=int(nextEventTime[5:-13])
-         eventTimeD=int(nextEventTime[8:-10])
-         eventTimeH=int(nextEventTime[11:-7])
-         eventTimeMin=int(nextEventTime[14:-4])
-         timeConverted=datetime.datetime(eventTimeY, eventTimeM, eventTimeD, eventTimeH, eventTimeMin, 0, 0).replace(tzinfo=ZULU)
-         until = timeConverted - now
-         NET = until.seconds
-         until=str(until)
-         until = until[:-7]
-         irc.send(bytes('PRIVMSG '+channel+' :'+events[1]['id'] +' - Occurs at '+events[1]['startAt']+', in \u0002'+until+'\u000F - '+events[1]['url']+'\r\n', 'UTF-8')) #gives event info
-         last_message = datetime.datetime.now(MYTZ)
-       else:
-         irc.send(bytes('PRIVMSG '+channel+' :'+events[0]['id'] +' - Occurs at '+events[0]['startAt']+', in \u0002'+until+'\u000F - '+events[0]['url']+'\r\n', 'UTF-8')) #gives event info
-         last_message = datetime.datetime.now(MYTZ)
-    if text.find(b':!help') != -1:
+         
+         start = parseEventDate(events[1]['startAt'])
+         until = start - now
+         send(irc, channel, "%(id)s - Occurs at %(start)s, in \u0002%(untild)s%(untilt)s\u000F - %(url)s" % {
+               "id"     : events[1]['id'],
+               "url"    : events[1]['url'],
+               "start"  : parseEventDate(events[1]['startAt']).strftime(ANNOUNCE_TIME_FORMAT),
+               "untild" : "%d days " if until.days != 0 else "",
+               "untilt" : (datetime.datetime.utcfromtimestamp(0) + datetime.timedelta(seconds=until.seconds)).strftime("%H:%M:%S")
+               })
+      # Just announce next
+      else:
+         start = parseEventDate(events[0]['startAt'])
+         until = start - now
+         send(irc, channel, "%(id)s - Occurs at %(start)s, in \u0002%(untild)s%(untilt)s\u000F - %(url)s" % {
+               "id"     : events[0]['id'],
+               "url"    : events[0]['url'],
+               "start"  : parseEventDate(events[1]['startAt']).strftime(ANNOUNCE_TIME_FORMAT),
+               "untild" : "%d days " if until.days != 0 else "",
+               "untilt" : (datetime.datetime.utcfromtimestamp(0) + datetime.timedelta(seconds=until.seconds)).strftime("%H:%M:%S")
+               })
+
+   if text.find(b':!help') != -1:
       print("Command found - Help")
-      irc.send(bytes('PRIVMSG '+channel+' :'+"!next - Displays next upcoming event, and any currently running event"+'\r\n', 'UTF-8'))
-      irc.send(bytes('PRIVMSG '+channel+' :'+"!place/!rank - Displays the place of the !track ed account in the current race"+'\r\n', 'UTF-8'))
-      last_message = datetime.datetime.now(MYTZ)
-    if text.find(b':!about') != -1:  #you don't have to keep this obviously, but credit is nice :)
-      irc.send(bytes('PRIVMSG '+channel+' :'+"PoEBot - A PoE race IRC/Twitch bot by Skyl3lazer! https://github.com/Skyl3lazer/PoEBot"+'\r\n', 'UTF-8'))
-      last_message = datetime.datetime.now(MYTZ)
+      send(irc, channel, "!next - Displays next upcoming event, and any currently running event")
+      send(irc, channel, "!place/!rank - Displays the place of the !track ed account in the current race")
+
+   if text.find(b':!about') != -1:  #you don't have to keep this obviously, but credit is nice :)
+      send(irc, channel, "PoEBot - A PoE race IRC/Twitch bot by Skyl3lazer! https://github.com/Skyl3lazer/PoEBot")
