@@ -1,4 +1,3 @@
-#!/bin/env python3
 # -*- coding: utf-8 -*-
 
 import datetime
@@ -17,7 +16,7 @@ server = "SERVERADDRESS"
 channel = "#CHANNEL"
 botnick = "BOTNAME"
 port = 6667
-#password = "oauth:asdasd234asd234ad234asds23" #Default is just an example password for twitch oauth format. Uncomment line 48 if you want this to work
+#password = "oauth:asdasd234asd234ad234asds23" #Default is just an example password for twitch oauth format. Uncomment line 58 if you want this to work
 MYTZ=pytz.timezone('US/Eastern') #CHANGE IF NOT EASTERN
 administrators=[b'User1', b'User2'] #List any channel admins here. They will have access to all commands! NOTE THE b IS NECESSARY BEFORE EACH USER
 rate_limit = 10.0 #seconds between messages. 0 means unlimited messages
@@ -56,7 +55,7 @@ last_message = datetime.datetime.now(MYTZ)
 irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #defines the socket
 print("connecting to:"+ server)
 irc.connect((server, port))   
-#irc.send(bytes("PASS "+password+"\n", 'UTF-8')) #Authentication, beta   
+#irc.send(bytes("PASS "+ password +"\n", 'UTF-8')) #Authentication, beta   
 irc.send(bytes("NICK "+ botnick +"\n", 'UTF-8'))                                                      #connects to the server
 irc.send(bytes("USER "+ botnick +" "+ botnick +" "+ botnick +" :Skyl3lazer's PoE bot\n", 'UTF-8')) #user authentication
 irc.send(bytes("JOIN "+ channel +"\n", 'UTF-8'))        #tries to join channel, probably doesnt
@@ -79,7 +78,7 @@ def hourAlert():
       start = parseEventDate(NextEvent['startAt'])
       until = secondsUntil(start)
    
-   send(irc, channel, 'EVENT ALERT - 1 HOUR - %(id) - Occurs at %(start)s - %(url)s' % {
+   send(irc, channel, 'EVENT ALERT - 1 HOUR - %(id)s - Occurs at %(start)s - %(url)s' % {
          "id"    : NextEvent['id'],
          "start" : start.strftime(ANNOUNCE_TIME_FORMAT),
          "url"   : NextEvent['url']
@@ -97,7 +96,7 @@ def startAlert():
    until = secondsUntil(start)
 
    if until > 3600:
-      send(irc, channel, 'EVENT ALERT - STARTING IN 5 MINUTES - %(id) - %(url)s' % {
+      send(irc, channel, 'EVENT ALERT - STARTING IN 5 MINUTES - %(id)s - %(url)s' % {
             "id"    : NextEvent['id'],
             "start" : start.strftime(ANNOUNCE_TIME_FORMAT),
             "url"   : NextEvent['url']
@@ -105,7 +104,7 @@ def startAlert():
       print("Starting Timer to 1hr - " + str(until - 3600))
       return [until - 3600, 'h']
    elif until > 300:
-      send(irc, channel, 'EVENT ALERT - STARTING IN 5 MINUTES - %(id) - %(url)s' % {
+      send(irc, channel, 'EVENT ALERT - STARTING IN 5 MINUTES - %(id)s - %(url)s' % {
             "id"    : NextEvent['id'],
             "start" : start.strftime(ANNOUNCE_TIME_FORMAT),
             "url"   : NextEvent['url']
@@ -217,7 +216,7 @@ while 1:    #puts it in a loop
          print("Admin Command Found - Track")
          if len(text.split(maxsplit = 5)) > 4:
             tracking = text.split(maxsplit = 5)[4]
-            tracking = str(ch)[2:-1]
+            tracking = str(tracking)[2:-1]
             send(irc, channel, "Now tracking account %s" % (tracking,))
          else:
             senc(irc, channel, "Use: !track <accountName>")
