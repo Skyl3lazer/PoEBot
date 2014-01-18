@@ -24,7 +24,7 @@ The bot will also act as a timer: at one hour to an event, and five minutes befo
 
 The packages were not included by default on my install, so they may not be on yours either.
 
-Within PoEBot.py, you should also edit the server, channel, and botnick to appropriate values. I have not yet added an authentication feature yet. If you are not in USE, you should change the TZ as appropriate. Administrators is a list of Bot admins. rate_limit controls how often the bot can respond to non admin commands put into chat. defLeague is the default league setting, which is a fallback for !place if no race is running.
+Within PoEBot.py, you should also edit the server, channel, and botnick to appropriate values. Password is either a normal password for an IRC, or a oauth key for twitch accounts. Note, if you want to use this feature, uncomment both the settings line, and the line specified in the comment. If you are not in USE, you should change the TZ as appropriate. Administrators is a list of Bot admins. rate_limit controls how often the bot can respond to non admin-commands put into chat. defLeague is the default league setting, which is a fallback for !place if no race is running.
 
 Enjoy some MIT License
 -Skyl3lazer

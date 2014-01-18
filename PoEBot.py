@@ -58,8 +58,8 @@ irc.connect((server, port))
 #irc.send(bytes("PASS "+ password +"\n", 'UTF-8')) #Authentication, beta   
 irc.send(bytes("NICK "+ botnick +"\n", 'UTF-8'))                                                      #connects to the server
 irc.send(bytes("USER "+ botnick +" "+ botnick +" "+ botnick +" :Skyl3lazer's PoE bot\n", 'UTF-8')) #user authentication
-irc.send(bytes("JOIN "+ channel +"\n", 'UTF-8'))        #tries to join channel, probably doesnt
-
+time.sleep(15)
+irc.send(bytes("JOIN "+ channel +"\n", 'UTF-8'))        #tries to join channel again
 
    
 
@@ -203,9 +203,6 @@ while 1:    #puts it in a loop
    last_message = now
 
    print(text)   #print text to console
-   if text.find(b'Tweet us your ideas!') != -1:                   #check to join channel
-      print("I SEE IT")
-      irc.send(bytes("JOIN "+ channel +"\n", 'UTF-8'))        #join the chan
    if text.find(b'PING') != -1:                          #check if 'PING' is found
       print("Return Ping Sent")
       print(bytes('PONG ' + text.split() [1].decode('utf-8') + '\r\n', 'UTF-8'))
