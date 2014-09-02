@@ -201,7 +201,7 @@ def announceRank(irc, channel, account, league):
             "league"  : league
             })
    else:
-      send(irc, channel, "Account %(account)s in league %(league)s is Rank %(rank)s overall and Rank %(crak)s %(class)s" % {
+      send(irc, channel, "Account %(account)s in league %(league)s is Rank %(rank)s overall and Rank %(crank)s %(class)s" % {
             "account" : account,
             "league"  : league,
             "rank"    : rank,
